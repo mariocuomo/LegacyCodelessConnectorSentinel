@@ -1,0 +1,110 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspace": {
+      "type": "string",
+      "defaultValue": ""
+    }
+  },
+  "resources": [
+    {
+      "id": "[concat('/subscriptions/',subscription().subscriptionId,'/resourceGroups/',resourceGroup().name,'/providers/Microsoft.OperationalInsights/workspaces/',parameters('workspace'),'/providers/Microsoft.SecurityInsights/dataConnectors/',guid(subscription().subscriptionId))]",
+      "name": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/',guid(subscription().subscriptionId))]",
+      "apiVersion": "2021-03-01-preview",
+      "type": "Microsoft.OperationalInsights/workspaces/providers/dataConnectors",
+      "kind": "APIPolling",
+      "properties": {
+        "connectorUiConfig": {
+          "title": "Personal Legacy CodelessConnector",
+          "id":"LegacyCodelessConnector",
+          "publisher": "Mario Cuomo Dev",
+          "descriptionMarkdown": "This connector is used to retrieve data from an Azure Function <insert your API Endpoint>. Fetch every minute.",
+          "graphQueriesTableName": "TestData_CL",
+          "graphQueries": [
+            {
+              "metricName": "Total data received",
+              "legend": "Audit Events",
+              "baseQuery": "{{graphQueriesTableName}}"
+            }
+          ],
+          "sampleQueries": [
+            {
+              "description": "Distinct name value",
+              "query": "{{graphQueriesTableName}}\n | distinct name\n"
+            }
+          ],
+          "dataTypes": [
+            {
+              "name": "{{graphQueriesTableName}}",
+              "lastDataReceivedQuery": "{{graphQueriesTableName}}\n            | summarize Time = max(TimeGenerated)\n            | where isnotempty(Time)"
+            }
+          ],
+          "connectivityCriteria": [
+            {
+              "type": "SentinelKindsV2",
+              "value": [
+                "APIPolling"
+              ]
+            }
+          ],
+          "availability": {
+            "status": 1,
+            "isPreview": false
+          },
+          "permissions": {
+            "resourceProvider": [
+              {
+                "provider": "Microsoft.OperationalInsights/workspaces",
+                "permissionsDisplayText": "read and write permissions are required.",
+                "providerDisplayName": "Workspace",
+                "scope": "Workspace",
+                "requiredPermissions": {
+                  "action": true,
+                  "write": true,
+                  "read": true,
+                  "delete": true
+                }
+              }
+            ]
+          },
+          "instructionSteps": [
+            {
+              "title": "Authenticate against the Azure Function",
+              "description": "Provide the Function API Key.",
+              "instructions": [
+                {
+                  "type": "APIKey"
+                }
+              ]
+            }
+          ]
+        },
+        "pollingConfig": {
+          "auth": {
+            "authType": "APIKey",
+            "APIKeyName": "x-functions-key",
+            "IsAPIKeyInPostPayload": false
+          },
+          "request": {
+            "apiEndpoint": "<insert your API Endpoint>",
+            "rateLimitQPS": 2,
+            "httpMethod": "Post",
+            "queryTimeFormat": "yyyy-MM-ddTHH:mm:ssZ",
+            "retryCount": 3,
+            "queryWindowInMin": 1,
+            "timeoutInSeconds": 20
+          },
+          "response": {
+            "eventsJsonPaths": [
+              "$.items"
+          ],
+            "format": "json",
+            "successStatusJsonPath": "$.status",
+            "successStatusValue": "OK"
+          }
+        }
+      }
+    }
+  ]
+}
